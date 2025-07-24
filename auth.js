@@ -1,41 +1,54 @@
 const mongoose = require("mongoose");
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const bcryptjs = require("bcrypt");
-const router = express.router();
+const bcrypt = require("bcrypt"); // corrected variable name
+const router = express.Router();
 
+// ✅ Correct schema constructor is "mongoose.Schema", not "mongoose.schema"
 const User = mongoose.model(
   "User",
-  new mongoose.schema({ email: String, password: String })
+  new mongoose.Schema({ email: String, password: String })
 );
 
-//signup router
+// Signup route
 router.post("/auth/signup", async (req, res) => {
   const { email, password } = req.body;
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return res.status(400).json({ error: "User already exists" });
   }
-  const hashedPassword = await bcrypt.hash([password]);
+
+  // ❌ FIXED: bcrypt.hash expects (password, saltRounds)
+  const hashedPassword = await bcrypt.hash(password, 10);
+
   const user = new User({ email, password: hashedPassword });
   await user.save();
+
   const token = jwt.sign({ userId: user._id }, "secret", { expiresIn: "1h" });
   res.status(200).json({ token });
 });
 
-//login router
-router.post("auth/login", async (req, res) => {
+// Login route
+router.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
+
   const user = await User.findOne({ email });
-  if (user && (await bcrypt.compare(password, user.password))) {
-    const token = jwt.sign({ userId: user._id }, "secret", { expiresIn: "1h" });
-  } else {
-    res.status(400).json({ error: "invalid credentials" });
+  if (!user) {
+    return res.status(400).json({ error: "Invalid credentials" });
   }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    return res.status(400).json({ error: "Invalid credentials" });
+  }
+
+  const token = jwt.sign({ userId: user._id }, "secret", { expiresIn: "1h" });
+  res.status(200).json({ token });
 });
 
-//jwt middleware
-function authenticationJWT(req, res, next) {
+// JWT middleware
+function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (authHeader) {
     const token = authHeader.split(" ")[1];
@@ -51,4 +64,6 @@ function authenticationJWT(req, res, next) {
   }
 }
 
-module.export = { router, authenticateJWT };
+// ❌ FIXED: should be "module.exports" not "module.export"
+module.exports = { router, authenticateJWT };
+
