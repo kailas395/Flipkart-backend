@@ -3,8 +3,8 @@ const express = require("express");
 const router = express.Router();
 
 const Cart = mongoose.model(
-  "cart",
-  new mongoose.schema({
+  "Cart",
+  new mongoose.Schema({
     userId: String,
     items: [
       {
@@ -12,24 +12,36 @@ const Cart = mongoose.model(
         quantity: Number,
       },
     ],
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      default: "active",
+    },
   })
 );
-router.post("/card/add", async (req, res) => {
+
+// Add item to cart
+router.post("/cart/add", async (req, res) => {
   try {
     const { productId, quantity = 1, user } = req.body;
 
     if (!productId || !user) {
-      return res.status(400).json({ message: "productid and user required" });
+      return res
+        .status(400)
+        .json({ message: "productId and user are required" });
     }
 
-    let cart = await Cart.findOne({ userid: user, status: "active" });
+    let cart = await Cart.findOne({ userId: user, status: "active" });
 
     if (!cart) {
       cart = new Cart({ userId: user, items: [], status: "active" });
     }
 
     const existingItemIndex = cart.items.findIndex(
-      (item) => items.productId == productId
+      (item) => item.productId === productId
     );
 
     if (existingItemIndex > -1) {
@@ -40,39 +52,57 @@ router.post("/card/add", async (req, res) => {
         quantity: parseInt(quantity),
       });
     }
-    cart.updateAt = new Date();
+
+    cart.updatedAt = new Date();
     await cart.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Item added to cart successfully",
+      cart,
+    });
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "internal server error,item has not been added" });
+    res.status(500).json({
+      error: "Internal server error, item has not been added",
+    });
   }
 });
 
-router.get("carts", async (req, res) => {
+// Get all carts
+router.get("/carts", async (req, res) => {
   try {
     const carts = await Cart.find({});
 
     res.status(200).json({
       success: true,
-      count: cart.length,
+      count: carts.length,
       data: carts,
     });
   } catch (err) {
-    console.log("error fetching the cart", error);
+    console.error("Error fetching the cart", err);
     res.status(500).json({
       success: false,
-      message: "failed to fetch data",
-      error: error.message,
+      message: "Failed to fetch cart data",
+      error: err.message,
     });
   }
 });
 
-//delete router
-
+// Delete cart item by ID (to be implemented)
 router.delete("/cart/:id", async (req, res) => {
-  //check if item is there in cart - do delete operation,
-  //if item is not there - err to user
+  try {
+    const { id } = req.params;
+    const cart = await Cart.findById(id);
+
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    await cart.deleteOne();
+    res.status(200).json({ message: "Cart deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete cart" });
+  }
 });
 
 module.exports = router;
