@@ -9,38 +9,41 @@ app.use(bodyParser.json());
 
 const { router: authRoutes, authenticateJWT } = require("./auth");
 const cartRouter = require("./cart");
+const Product = require("./models/Product");
+
 app.use(authRoutes);
-app.use(cartRoutes);
+app.use(cartRouter);
 
 mongoose.connect(
   "mongodb+srv://vijayasre284:cbQOptn5ssEW5blW@cluster0.xnlfpxl.mongodb.net/ecommerce",
-  { useNewUrlparser: true, useUnifiedtopology: true }
+  { useNewUrlParser: true, useUnifiedTopology: true }
 );
 
+// Get all products
 app.get("/products", async (req, res) => {
   try {
-    const products = await product.find();
+    const products = await Product.find();
     res.json(products);
   } catch (error) {
-    res.status(500).json({ error: "there is an internal server error" });
+    res.status(500).json({ error: "There is an internal server error" });
   }
 });
 
+// Get single product by ID
 app.get("/product/:id", async (req, res) => {
   try {
-    const product = await product.findById(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res
         .status(404)
-        .json({ message: "the item you were searching doesn't exist" });
-    } else {
-      res.json(product);
+        .json({ message: "The item you were searching for doesn't exist" });
     }
+    res.json(product);
   } catch (error) {
-    res.status(500).json({ error: "server error" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 app.listen(8080, () => {
-  console.log("server is running on port 8080");
+  console.log("Server is running on port 8080");
 });
